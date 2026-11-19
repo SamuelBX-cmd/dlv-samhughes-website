@@ -9,6 +9,11 @@
     "share_image": "assets/img/site/share.png"
   },
 
+  "articles": {
+    "_help": "Articles live in the articles/ folder, one Markdown file each. They appear as tiles, newest first, wherever a page contains <!-- articles -->.",
+    "heading": "Some things that I’ve written"
+  },
+
   "pages": [
     {
       "id": "home",

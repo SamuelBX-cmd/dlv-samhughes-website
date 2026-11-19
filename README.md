@@ -17,6 +17,30 @@ A hidden page is not built at all. It gets no URL, its nav link and prev/next li
 
 The page source and images stay in this repository either way, and the repository is public. Hiding a page keeps it off the website, not out of GitHub.
 
+## Adding an article
+
+Articles are tiles in the "Some things that I’ve written" section on the home page, newest first. Each article is one file in [`articles/`](articles/).
+
+1. Copy `articles/_template.md` to `articles/<short-name>.md`, using lowercase letters, numbers and hyphens. The file name becomes the address: `/articles/<short-name>/`.
+2. Fill in the fields at the top:
+
+   | Field | What it does |
+   |---|---|
+   | `title` | Headline on the tile and the article page (required) |
+   | `date` | `YYYY-MM-DD`; sets the order, newest first (required) |
+   | `summary` | One or two sentences on the tile (required) |
+   | `image` | Tile and header image, e.g. `assets/img/articles/<short-name>.webp` |
+   | `image_alt` | Description of the image for screen readers |
+   | `link` | Where it was first posted, e.g. the LinkedIn URL |
+   | `first_published_in` | Optional; adds "(first published in …)" to the tile |
+   | `published` | `false` hides it without deleting the file |
+
+3. Put the image in `assets/img/articles/`.
+4. Below the `---` line, paste the article in Markdown: `## Subheading`, `**bold**`, `*italic*`, `[link text](url)`, `- bullets`, `> quote` and `![description](assets/img/articles/picture.webp)` all work.
+5. Commit on a branch, open a PR, merge. The tile appears on the home page and the article gets its own page.
+
+If you leave the body empty, there is no article page and the tile links straight to `link`. That is how the six existing articles work today, so each one can be brought onto the site later by pasting its text into its file.
+
 ## Unlinked experiments
 
 There are two ways to put something on the site without linking to it from anywhere. Both pages are reachable only by someone who has the URL, and both tell search engines not to index them.
@@ -59,6 +83,7 @@ Python 3 is the only requirement. The deploy runs `python3 build.py` in GitHub A
 | `assets/css/site.css` | Theme colours, type scale, grid, components |
 | `assets/js/site.js` | Header offset, mobile menu, portfolio hover covers |
 | `assets/img/`, `assets/video/` | Images and video, one folder per page |
+| `articles/` | One Markdown file per article; `_template.md` is the starting point |
 | `experiments/` | Standalone unlinked experiments, one folder each |
 | `build.py` | Builds `_site/` from the above |
 

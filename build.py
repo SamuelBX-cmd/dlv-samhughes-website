@@ -13,6 +13,11 @@ from a hidden page reaches the live site.
 A page with "listed": false is built but kept out of the nav, the portfolio
 index and prev/next links, and asks search engines not to index it.
 
+Each file in articles/ (except ones starting with "_") is an article. It
+becomes a tile wherever a page contains <!-- articles -->, newest first. An
+article with body text also gets its own page at /articles/<file name>/; one
+without body text links its tile straight to its "link".
+
 Each folder in experiments/ is copied as-is to /experiments/<folder>/, with a
 noindex tag added to its HTML. Folders starting with "_" are skipped.
 """
@@ -67,6 +72,174 @@ NOINDEX = '<meta name="robots" content="noindex, nofollow">'
 
 def is_listed(page):
     return page.get("listed", True)
+
+
+# ---------- Articles ----------
+
+ARTICLES = os.path.join(ROOT, "articles")
+ARTICLE_FIELDS = {"title", "date", "summary", "image", "image_alt", "link", "first_published_in", "published"}
+
+
+def parse_article(path):
+    text = read(path)
+    m = re.match(r"---\s*\n(.*?)\n---\s*\n?", text, re.S)
+    if not m:
+        sys.exit(f"{path}: must start with a --- block of fields")
+    meta = {}
+    for line in m.group(1).splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if ":" not in line:
+            sys.exit(f"{path}: can't read line '{line}' (expected 'field: value')")
+        key, value = line.split(":", 1)
+        key = key.strip()
+        if key not in ARTICLE_FIELDS:
+            sys.exit(f"{path}: unknown field '{key}'. Known fields: {', '.join(sorted(ARTICLE_FIELDS))}")
+        meta[key] = value.strip()
+    for key in ("title", "date", "summary"):
+        if not meta.get(key):
+            sys.exit(f"{path}: '{key}' is required")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", meta["date"]):
+        sys.exit(f"{path}: date must look like 2025-01-28")
+    meta["published"] = meta.get("published", "true").lower() not in ("false", "no", "0")
+    meta["body"] = text[m.end():].strip()
+    return meta
+
+
+def load_articles():
+    if not os.path.isdir(ARTICLES):
+        return []
+    out = []
+    for fn in sorted(os.listdir(ARTICLES)):
+        if not fn.endswith(".md") or fn.startswith(("_", ".")):
+            continue
+        slug = fn[:-3]
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", slug):
+            sys.exit(f"articles/{fn}: name files with lowercase letters, numbers and hyphens only")
+        a = parse_article(os.path.join(ARTICLES, fn))
+        a["slug"] = slug
+        if a["published"]:
+            if not a["body"] and not a.get("link"):
+                sys.exit(f"articles/{fn}: needs either body text or a 'link'")
+            out.append(a)
+    out.sort(key=lambda a: a["date"], reverse=True)
+    return out
+
+
+def format_date(iso):
+    y, m, d = (int(x) for x in iso.split("-"))
+    months = ["January", "February", "March", "April", "May", "June", "July",
+              "August", "September", "October", "November", "December"]
+    return f"{d} {months[m - 1]} {y}"
+
+
+def source_name(a):
+    link = a.get("link", "")
+    if "linkedin.com" in link:
+        return "LinkedIn"
+    if a.get("first_published_in"):
+        return a["first_published_in"]
+    m = re.match(r"https?://(?:www\.)?([^/]+)", link)
+    return m.group(1) if m else "the original site"
+
+
+def md_inline(text):
+    tokens = []
+
+    def keep(fragment):
+        tokens.append(fragment)
+        return f"\x00{len(tokens) - 1}\x00"
+
+    text = re.sub(r"`([^`]+)`", lambda m: keep(f"<code>{html.escape(m.group(1))}</code>"), text)
+    text = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)",
+                  lambda m: keep(f'<img src="{html.escape(m.group(2))}" alt="{html.escape(m.group(1))}" loading="lazy" decoding="async">'), text)
+
+    def link(m):
+        href = m.group(2)
+        ext = ' target="_blank" rel="noopener"' if href.startswith("http") else ""
+        return keep(f'<a href="{html.escape(href)}"{ext}>') + m.group(1) + keep("</a>")
+    text = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, text)
+    text = html.escape(text, quote=False)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<em>\1</em>", text)
+    text = re.sub(r"(?<![\w_])_(?!\s)(.+?)(?<!\s)_(?![\w_])", r"<em>\1</em>", text)
+    while "\x00" in text:
+        text = re.sub(r"\x00(\d+)\x00", lambda m: tokens[int(m.group(1))], text)
+    return text
+
+
+def md_to_html(md):
+    """A small Markdown subset: headings, paragraphs, lists, quotes, images, rules, raw HTML."""
+    out = []
+    for block in re.split(r"\n\s*\n", md.strip()):
+        lines = [l.rstrip() for l in block.strip("\n").splitlines()]
+        first = lines[0].lstrip()
+        if first.startswith("<"):
+            out.append(block.strip())
+        elif re.fullmatch(r"(-{3,}|\*{3,})", first) and len(lines) == 1:
+            out.append("<hr>")
+        elif m := re.match(r"(#{1,4})\s+(.*)", first):
+            level = {1: 2, 2: 2, 3: 3, 4: 4}[len(m.group(1))]
+            out.append(f"<h{level}>{md_inline(' '.join([m.group(2)] + lines[1:]))}</h{level}>")
+        elif all(re.match(r"\s*[-*+]\s+", l) for l in lines):
+            items = "".join(f"<li>{md_inline(re.sub(r'^\s*[-*+]\s+', '', l))}</li>" for l in lines)
+            out.append(f"<ul>{items}</ul>")
+        elif all(re.match(r"\s*\d+[.)]\s+", l) for l in lines):
+            items = "".join(f"<li>{md_inline(re.sub(r'^\s*\d+[.)]\s+', '', l))}</li>" for l in lines)
+            out.append(f"<ol>{items}</ol>")
+        elif all(l.lstrip().startswith(">") for l in lines):
+            inner = "\n".join(re.sub(r"^\s*>\s?", "", l) for l in lines)
+            out.append(f"<blockquote>{md_to_html(inner)}</blockquote>")
+        elif len(lines) == 1 and re.fullmatch(r"!\[[^\]]*\]\([^)\s]+\)", first):
+            out.append(f"<figure>{md_inline(first)}</figure>")
+        else:
+            out.append(f"<p>{md_inline(' '.join(l.strip() for l in lines))}</p>")
+    return "\n".join(out)
+
+
+def article_href(a, prefix):
+    return f"{prefix}articles/{a['slug']}/" if a["body"] else a["link"]
+
+
+def article_title_html(a):
+    t = html.escape(a["title"])
+    if a.get("first_published_in"):
+        t += f" <em>(first published in {html.escape(a['first_published_in'])})</em>"
+    return t
+
+
+def articles_section(articles, heading, prefix):
+    tiles = []
+    for a in articles:
+        href = html.escape(article_href(a, prefix))
+        ext = "" if a["body"] else ' target="_blank" rel="noopener"'
+        img = ""
+        if a.get("image"):
+            img = (f'<a class="at-img" href="{href}"{ext} tabindex="-1" aria-hidden="true">'
+                   f'<img src="{html.escape(a["image"])}" alt="{html.escape(a.get("image_alt", ""))}" loading="lazy" decoding="async"></a>')
+        tiles.append(f'    <article class="article-tile">{img}'
+                     f'<div class="at-text"><h4>{article_title_html(a)}</h4><p>{html.escape(a["summary"])}</p></div>'
+                     f'<a class="btn btn-medium" href="{href}"{ext}>Read it here</a></article>')
+    return (f'<section class="sec t-light-bold h-small sec-articles" id="writing">\n'
+            f'  <div class="articles-wrap">\n  <h4 class="articles-heading">{html.escape(heading)}</h4>\n'
+            f'  <div class="article-grid">\n' + "\n".join(tiles) + "\n  </div>\n  </div>\n</section>\n")
+
+
+def article_page(a, prefix, home_url):
+    meta = format_date(a["date"])
+    if a.get("first_published_in"):
+        meta += f" · First published in {html.escape(a['first_published_in'])}"
+    hero = ""
+    if a.get("image"):
+        hero = f'<img class="article-hero" src="{html.escape(a["image"])}" alt="{html.escape(a.get("image_alt", ""))}">'
+    source = ""
+    if a.get("link"):
+        source = (f'<p class="article-source">Originally published on '
+                  f'<a href="{html.escape(a["link"])}" target="_blank" rel="noopener">{html.escape(source_name(a))}</a>.</p>')
+    return (f'<section class="sec t-light-bold h-small sec-article">\n<article class="article-wrap">\n'
+            f'<p class="article-back"><a href="{home_url}#writing">All writing</a></p>\n'
+            f'<h1>{html.escape(a["title"])}</h1>\n<p class="article-meta">{meta}</p>\n{hero}\n'
+            f'<div class="article-body">\n{md_to_html(a["body"])}\n</div>\n{source}\n</article>\n</section>\n')
 
 
 def resolve_links(body, pages, live, prefix, warnings, source):
@@ -181,6 +354,16 @@ def build():
         for p in pages.values():
             p["published"] = True
         print("PREVIEW: --all builds hidden pages too. Do not deploy this output.")
+    articles = load_articles()
+    for a in articles:
+        if not a["body"]:
+            continue
+        if a["slug"] in pages:
+            sys.exit(f"articles/{a['slug']}.md: name clashes with page id '{a['slug']}' in site.json")
+        page = {"id": a["slug"], "path": "articles/" + a["slug"], "type": "article", "article": a,
+                "title": f"{a['title']} — {cfg['site']['title']}", "published": True, "listed": False}
+        pages[a["slug"]] = page
+        cfg["pages"].append(page)
     live = {pid for pid, p in pages.items() if is_live(p, pages)}
     layout = read(os.path.join(SRC, "layout.html"))
     footer = read(os.path.join(SRC, "partials", "footer.html"))
@@ -197,14 +380,24 @@ def build():
         prefix = "../" * depth or "./"
         if page.get("type") == "portfolio-index":
             meta, body = {"title": page.get("title", cfg["site"]["title"])}, portfolio_index(page, pages, live)
+        elif page.get("type") == "article":
+            a = page["article"]
+            meta, body = {"description": a["summary"]}, article_page(a, prefix, prefix)
         else:
             meta, body = front_matter(read(os.path.join(SRC, page["source"])))
             body += pagination(page, pages, live)
+            if "<!-- articles -->" in body:
+                heading = cfg.get("articles", {}).get("heading", "Writing")
+                body = body.replace("<!-- articles -->", articles_section(articles, heading, prefix))
         source = page.get("source", pid)
         theme = header_theme(body)
         body = resolve_links(body, pages, live, prefix, warnings, source)
         foot = resolve_links(footer, pages, live, prefix, warnings, "partials/footer.html")
         title = page.get("title") or meta.get("title") or cfg["site"]["title"]
+        share = cfg["site"].get("share_image", "")
+        if page.get("type") == "article" and page["article"].get("image"):
+            share = page["article"]["image"]
+            used.add(share)
         desc = meta.get("description", "")
         doc = (layout
                .replace("{{lang}}", cfg["site"].get("lang", "en"))
@@ -219,7 +412,7 @@ def build():
                .replace("{{robots}}", "" if is_listed(page) else "\n" + NOINDEX)
                .replace("{{page_id}}", pid)
                .replace("{{canonical}}", cfg["site"].get("url", "").rstrip("/") + "/" + (page["path"] + "/" if page["path"] else ""))
-               .replace("{{share_image}}", cfg["site"].get("url", "").rstrip("/") + "/" + cfg["site"].get("share_image", "")))
+               .replace("{{share_image}}", cfg["site"].get("url", "").rstrip("/") + "/" + share))
         doc = rewrite_assets(doc, prefix, used)
         dest = os.path.join(OUT, page["path"], "index.html")
         os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -254,6 +447,7 @@ def build():
     print(f"Built {len(built)} page(s): {', '.join(built)}")
     print(f"Hidden: {', '.join(hidden) if hidden else 'none'}")
     print(f"Copied {len(used)} asset file(s)")
+    print(f"Articles: {len(articles)} ({sum(1 for a in articles if a['body'])} with their own page)")
     print(f"Experiments: {', '.join('/experiments/' + e + '/' for e in experiments) if experiments else 'none'}")
     for w in warnings:
         print("note:", w)
