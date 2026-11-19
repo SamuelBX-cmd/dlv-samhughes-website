@@ -17,6 +17,28 @@ A hidden page is not built at all. It gets no URL, its nav link and prev/next li
 
 The page source and images stay in this repository either way, and the repository is public. Hiding a page keeps it off the website, not out of GitHub.
 
+## Unlinked experiments
+
+There are two ways to put something on the site without linking to it from anywhere. Both pages are reachable only by someone who has the URL, and both tell search engines not to index them.
+
+**A standalone experiment** (its own HTML, CSS and JS, for example a prototype or an exported artifact):
+
+1. Copy `experiments/_example/` to `experiments/<name>/`, using lowercase letters, numbers and hyphens.
+2. Put the experiment's files in that folder, with `index.html` as the entry page.
+3. Commit on a branch, open a PR, merge. It goes live at `https://www.samhughes.com.au/experiments/<name>/`.
+
+The folder is copied as it is. The build only adds a `noindex` tag to each HTML file. To take an experiment down, delete its folder or rename it to start with `_`. Folders starting with `_` are never deployed.
+
+**A page in the site's own design** (header, footer, fonts): add it to `site.json` with `"listed": false`:
+
+```json
+{ "id": "idea", "path": "lab/idea", "source": "pages/lab/idea.html", "listed": false, "published": true }
+```
+
+An unlisted page is built like any other but stays out of the nav, the portfolio index and prev/next links.
+
+Unlinked is not private. The repository is public, so anyone browsing it on GitHub can find these files.
+
 ## Working on it locally
 
 ```bash
@@ -30,13 +52,14 @@ Python 3 is the only requirement. The deploy runs `python3 build.py` in GitHub A
 
 | Path | What it is |
 |---|---|
-| `site.json` | Page list: paths, nav labels, published flags, portfolio covers |
+| `site.json` | Page list: paths, nav labels, published and listed flags, portfolio covers |
 | `src/layout.html` | Shared page shell: head, header, mobile menu, footer slot |
 | `src/partials/footer.html` | Footer used on every page |
 | `src/pages/` | One file per page, written as sections of blocks |
 | `assets/css/site.css` | Theme colours, type scale, grid, components |
 | `assets/js/site.js` | Header offset, mobile menu, portfolio hover covers |
 | `assets/img/`, `assets/video/` | Images and video, one folder per page |
+| `experiments/` | Standalone unlinked experiments, one folder each |
 | `build.py` | Builds `_site/` from the above |
 
 ### Page sources

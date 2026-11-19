@@ -9,6 +9,12 @@ Only pages marked "published": true in site.json are built. A page whose parent
 is unpublished is skipped too. Links to unbuilt pages are turned into plain
 text, and only the images that built pages actually use are copied, so nothing
 from a hidden page reaches the live site.
+
+A page with "listed": false is built but kept out of the nav, the portfolio
+index and prev/next links, and asks search engines not to index it.
+
+Each folder in experiments/ is copied as-is to /experiments/<folder>/, with a
+noindex tag added to its HTML. Folders starting with "_" are skipped.
 """
 import html
 import json
@@ -56,6 +62,13 @@ def url_for(page, prefix):
     return prefix + (page["path"] + "/" if page["path"] else "")
 
 
+NOINDEX = '<meta name="robots" content="noindex, nofollow">'
+
+
+def is_listed(page):
+    return page.get("listed", True)
+
+
 def resolve_links(body, pages, live, prefix, warnings, source):
     # Button blocks pointing at hidden pages are dropped entirely.
     def drop_button(m):
@@ -93,7 +106,7 @@ def header_theme(body):
 
 
 def portfolio_index(page, pages, live):
-    items = [p for p in pages.values() if p.get("parent") == page["id"] and p["id"] in live]
+    items = [p for p in pages.values() if p.get("parent") == page["id"] and p["id"] in live and is_listed(p)]
     out = []
     for i, p in enumerate(items):
         delim = '<span class="pf-delim" aria-hidden="true">—</span>' if i < len(items) - 1 else ""
@@ -106,8 +119,8 @@ def portfolio_index(page, pages, live):
 
 
 def pagination(page, pages, live):
-    siblings = [p for p in pages.values() if p.get("parent") == page.get("parent") and p["id"] in live]
-    if not page.get("parent") or len(siblings) < 2:
+    siblings = [p for p in pages.values() if p.get("parent") == page.get("parent") and p["id"] in live and is_listed(p)]
+    if not page.get("parent") or not is_listed(page) or len(siblings) < 2:
         return ""
     i = [p["id"] for p in siblings].index(page["id"])
     prev_p = siblings[i - 1] if i > 0 else None
@@ -124,11 +137,42 @@ def pagination(page, pages, live):
 def nav_html(cfg, pages, live, current, prefix):
     items = []
     for p in cfg["pages"]:
-        if p.get("nav") and p["id"] in live:
+        if p.get("nav") and p["id"] in live and is_listed(p):
             active = current["id"] == p["id"] or current.get("parent") == p["id"]
             cls = ' class="active" aria-current="page"' if active else ""
             items.append(f'<a href="{url_for(p, prefix)}"{cls}>{html.escape(p["nav"])}</a>')
     return "".join(items)
+
+
+def copy_experiments():
+    """Copy each experiments/<name>/ folder verbatim, adding noindex to its HTML."""
+    src_dir = os.path.join(ROOT, "experiments")
+    if not os.path.isdir(src_dir):
+        return []
+    names = sorted(n for n in os.listdir(src_dir)
+                   if os.path.isdir(os.path.join(src_dir, n)) and not n.startswith((".", "_")))
+    for name in names:
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
+            sys.exit(f"experiments/{name}: use lowercase letters, numbers and hyphens only")
+        dst = os.path.join(OUT, "experiments", name)
+        shutil.copytree(os.path.join(src_dir, name), dst,
+                        ignore=shutil.ignore_patterns(".*"))
+        if not os.path.isfile(os.path.join(dst, "index.html")):
+            print(f"note: experiments/{name} has no index.html, so /experiments/{name}/ will 404")
+        for dirpath, _, files in os.walk(dst):
+            for fn in files:
+                if fn.lower().endswith((".html", ".htm")):
+                    fp = os.path.join(dirpath, fn)
+                    with open(fp, encoding="utf-8", errors="surrogateescape") as f:
+                        text = f.read()
+                    if 'name="robots"' in text:
+                        continue
+                    text, n = re.subn(r"(<head[^>]*>)", lambda m: m.group(1) + NOINDEX, text, count=1, flags=re.I)
+                    if not n:
+                        text = NOINDEX + "\n" + text
+                    with open(fp, "w", encoding="utf-8", errors="surrogateescape") as f:
+                        f.write(text)
+    return names
 
 
 def build():
@@ -172,6 +216,7 @@ def build():
                .replace("{{nav}}", nav_html(cfg, pages, live, page, prefix))
                .replace("{{content}}", body)
                .replace("{{footer}}", foot)
+               .replace("{{robots}}", "" if is_listed(page) else "\n" + NOINDEX)
                .replace("{{page_id}}", pid)
                .replace("{{canonical}}", cfg["site"].get("url", "").rstrip("/") + "/" + (page["path"] + "/" if page["path"] else ""))
                .replace("{{share_image}}", cfg["site"].get("url", "").rstrip("/") + "/" + cfg["site"].get("share_image", "")))
@@ -180,7 +225,7 @@ def build():
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         with open(dest, "w", encoding="utf-8") as f:
             f.write(doc)
-        built.append("/" + page["path"])
+        built.append("/" + page["path"] + ("" if is_listed(page) else " (unlisted)"))
         for alias in page.get("aliases", []):
             a_prefix = "../" * len(alias.split("/"))
             target = url_for(page, a_prefix)
@@ -203,11 +248,13 @@ def build():
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
     open(os.path.join(OUT, ".nojekyll"), "w").close()
+    experiments = copy_experiments()
 
     hidden = sorted(set(pages) - live)
     print(f"Built {len(built)} page(s): {', '.join(built)}")
     print(f"Hidden: {', '.join(hidden) if hidden else 'none'}")
     print(f"Copied {len(used)} asset file(s)")
+    print(f"Experiments: {', '.join('/experiments/' + e + '/' for e in experiments) if experiments else 'none'}")
     for w in warnings:
         print("note:", w)
 
