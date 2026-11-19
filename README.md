@@ -4,7 +4,7 @@ Static rebuild of Sam Hughes's personal website, matching the current Squarespac
 
 - **Owner:** Sam Hughes
 - **Status:** Draft. Home and Contact are published; the Portfolio and its case studies are built but hidden.
-- **Live URL:** https://samuelbx-cmd.github.io/dlv-samhughes-website/
+- **Live URL:** https://www.samhughes.com.au/
 
 ## Turning pages on and off
 
@@ -45,6 +45,6 @@ Each page is a list of `<section>` elements. A section's class sets its theme (`
 
 Link to another page with `href="page:<id>"`, for example `href="page:contact"`. The build turns it into the right relative URL, or into plain text if that page is hidden.
 
-## Moving the domain
+## Domain
 
-The site currently runs at the GitHub Pages address above. To serve it from samhughes.com.au, set `site.url` in `site.json`, add the custom domain under Settings → Pages, and update DNS at the registrar. Squarespace keeps serving the domain until DNS is moved.
+`www.samhughes.com.au` is served by GitHub Pages (custom domain set under Settings → Pages; `samhughes.com.au` redirects to `www`). DNS is at GoDaddy: four `@` A records to `185.199.108.153`–`185.199.111.153` and a `www` CNAME to `samuelbx-cmd.github.io`. The domain is verified on the GitHub account through a `_github-pages-challenge-SamuelBX-cmd` TXT record, which should stay in place.
