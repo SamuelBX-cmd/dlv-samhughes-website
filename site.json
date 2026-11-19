@@ -1,5 +1,5 @@
 {
-  "_help": "Turn a page on or off by setting \"published\" to true or false, then merge the change. Hidden pages are not built at all: no URL, no nav link, no prev/next link, and their images are not deployed. A case study only goes live if both it and the portfolio page are published.",
+  "_help": "Turn a page on or off by setting \"published\" to true or false, then merge the change. Hidden pages are not built at all: no URL, no nav link, no prev/next link, and their images are not deployed. A case study only goes live if both it and the portfolio page are published. Add \"listed\": false to build a page without linking to it from anywhere (no nav, no index, noindex for search engines).",
 
   "site": {
     "title": "Sam Hughes",
