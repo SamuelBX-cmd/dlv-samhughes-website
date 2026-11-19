@@ -1,0 +1,73 @@
+{
+  "_help": "Turn a page on or off by setting \"published\" to true or false, then merge the change. Hidden pages are not built at all: no URL, no nav link, no prev/next link, and their images are not deployed. A case study only goes live if both it and the portfolio page are published.",
+
+  "site": {
+    "title": "Sam Hughes",
+    "lang": "en-AU",
+    "url": "https://samuelbx-cmd.github.io/dlv-samhughes-website",
+    "favicon": "assets/img/site/favicon.png",
+    "share_image": "assets/img/site/share.png"
+  },
+
+  "pages": [
+    {
+      "id": "home",
+      "path": "",
+      "source": "pages/home.html",
+      "nav": "About",
+      "aliases": ["about"],
+      "published": true
+    },
+    {
+      "id": "contact",
+      "path": "contact",
+      "source": "pages/contact.html",
+      "nav": "Contact",
+      "published": true
+    },
+    {
+      "id": "portfolio",
+      "path": "portfolio",
+      "type": "portfolio-index",
+      "nav": "Portfolio",
+      "title": "Portfolio | Discover Creative Solutions Today — Sam Hughes",
+      "published": false
+    },
+    {
+      "id": "vocus",
+      "path": "portfolio/vocus",
+      "source": "pages/portfolio/vocus.html",
+      "parent": "portfolio",
+      "label": "Vocus",
+      "cover": "assets/img/vocus/vocus-cover.webp",
+      "published": true
+    },
+    {
+      "id": "ebay",
+      "path": "portfolio/ebay",
+      "source": "pages/portfolio/ebay.html",
+      "parent": "portfolio",
+      "label": "EBay",
+      "cover": "assets/img/portfolio/screenshot-2024-06-26-at-11.14.43-am.jpg",
+      "published": true
+    },
+    {
+      "id": "mcdonalds",
+      "path": "portfolio/mcdonalds",
+      "source": "pages/portfolio/mcdonalds.html",
+      "parent": "portfolio",
+      "label": "McDonalds",
+      "cover": "assets/img/portfolio/artboard-1quote.webp",
+      "published": true
+    },
+    {
+      "id": "philipshaw",
+      "path": "portfolio/philipshaw",
+      "source": "pages/portfolio/philipshaw.html",
+      "parent": "portfolio",
+      "label": "Philip Shaw Wines",
+      "cover": "assets/img/portfolio/map_longer_contrasty_1.webp",
+      "published": true
+    }
+  ]
+}
