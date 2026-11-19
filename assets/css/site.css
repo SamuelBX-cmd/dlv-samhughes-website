@@ -392,3 +392,17 @@ main > .sec.h-custom:first-child { padding-top: var(--hdr); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
+
+/* Footer credit line */
+.built-with {
+  margin: 0;
+  padding: 0 var(--gutter) calc(var(--gutter) * .5);
+  background: var(--bg);
+  font-size: var(--fs-small);
+  letter-spacing: .02em;
+  color: color-mix(in srgb, var(--fg) 75%, var(--bg));
+}
+.built-with a { color: inherit; }
+@media (max-width: 767px) {
+  .built-with { padding: 0 6vw 6vw; }
+}
