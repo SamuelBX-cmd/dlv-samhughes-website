@@ -17,6 +17,20 @@ A hidden page is not built at all. It gets no URL, its nav link and prev/next li
 
 The page source and images stay in this repository either way, and the repository is public. Hiding a page keeps it off the website, not out of GitHub.
 
+## Site editor
+
+Articles and case studies can be drafted in the site editor, a private claude.ai page: https://claude.ai/artifact/NsXTyBPSNffoEZPzaV153t
+
+- **Articles:** headline, date, summary, original link, tile image and the article text in Markdown.
+- **Case studies:** project details, a cover image, then page blocks (text, full-width or column image, 2- or 3-across image grid, quote, numbers, video), reordered with the arrows. The editor builds the page; the copy is yours.
+- **Images** are resized in the browser before upload: 2400px wide for covers and full-width images, 1800px for column images, 1600px for article images and 2-across grids, 1200px for 3-across grids, saved as WebP (JPEG in Safari).
+
+When a draft is marked **Ready to publish**, ask Claude to "publish my website drafts". Claude reads the ready drafts and downloads their images, runs `tools/import_draft.py` to write `articles/<name>.md` or `case-studies/<name>.json` plus images, builds, opens a PR and merges it, then marks the drafts Published in the editor.
+
+## Case studies
+
+Each case study is one file, `case-studies/<name>.json`, published at `/portfolio/<name>/`. `case-studies/_example.json` shows every field and block type. A case study only goes live when the `portfolio` page in `site.json` is published, and when it is, the first two also appear as "Selected work" on the home page. A JSON case study with the same name as an older hand-built page in `site.json` replaces it.
+
 ## Adding an article
 
 Articles are tiles in the "Some things that I’ve written" section on the home page, newest first. Each article is one file in [`articles/`](articles/).
@@ -85,6 +99,8 @@ Python 3 is the only requirement. The deploy runs `python3 build.py` in GitHub A
 | `assets/js/site.js` | Header offset, mobile menu, portfolio hover covers |
 | `assets/img/`, `assets/video/` | Images and video, one folder per page |
 | `articles/` | One Markdown file per article; `_template.md` is the starting point |
+| `case-studies/` | One JSON file per case study; `_example.json` shows every block |
+| `tools/import_draft.py` | Turns a draft from the site editor into the files above |
 | `experiments/` | Standalone unlinked experiments, one folder each |
 | `build.py` | Builds `_site/` from the above |
 
