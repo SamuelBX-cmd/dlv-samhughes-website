@@ -10,7 +10,9 @@ document body, or the {"id", "data": {...}} wrapper a database read returns).
 
 Articles become articles/<slug>.md plus assets/img/articles/<slug>.<ext>.
 Case studies become case-studies/<slug>.json plus assets/img/<slug>/... and
-assets/video/<slug>-N.<ext>. Existing files for the same slug are replaced.
+assets/video/<slug>-N.<ext>. Experiments become experiments/<slug>/<path>,
+copied byte for byte (HTML files are stored by the editor as plain text and get
+their names back here). Existing files for the same slug are replaced.
 Prints the files written.
 """
 import json
@@ -129,6 +131,33 @@ def import_case(doc, w):
     return slug
 
 
+def import_experiment(doc, w):
+    x = doc["data"]
+    slug = doc.get("slug") or slugify(x["title"])
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", slug):
+        sys.exit(f"experiment name '{slug}' must use lowercase letters, numbers and hyphens")
+    base = os.path.join(ROOT, "experiments", slug)
+    if os.path.isdir(base):
+        shutil.rmtree(base)                       # a new upload replaces the whole experiment
+    paths = set()
+    for f in x.get("files", []):
+        path = f["path"].replace("\\", "/").lstrip("/")
+        parts = path.split("/")
+        if not path or any(p in ("", ".", "..") for p in parts):
+            sys.exit(f"unsafe file path in experiment: {f['path']!r}")
+        if path in paths:
+            sys.exit(f"duplicate file path in experiment: {path}")
+        paths.add(path)
+        rel = f"experiments/{slug}/{path}"
+        dst = os.path.join(ROOT, rel)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copyfile(find_asset(w.asset_dir, f["asset"]), dst)
+        w.written.append(rel)
+    if "index.html" not in {p.lower() for p in paths}:
+        sys.exit("experiment has no index.html")
+    return slug
+
+
 def main():
     if len(sys.argv) != 3:
         sys.exit(__doc__)
@@ -137,7 +166,8 @@ def main():
     if "kind" not in doc and isinstance(doc.get("data"), dict) and "kind" in doc["data"]:
         doc = doc["data"]          # a database read wraps the body as {"id", "data", "version"}
     w = Writer(sys.argv[2])
-    slug = import_article(doc, w) if doc["kind"] == "article" else import_case(doc, w)
+    importer = {"article": import_article, "case": import_case, "experiment": import_experiment}[doc["kind"]]
+    slug = importer(doc, w)
     print(f"{doc['kind']} {slug}")
     for rel in w.written:
         print("  wrote", rel)
