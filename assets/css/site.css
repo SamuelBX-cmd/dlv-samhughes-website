@@ -207,7 +207,7 @@ main > .row:first-child { border-top: 0; }
 .article-side .back::before { content: "← "; }
 .article-side p { color: var(--muted); }
 .article-head .display { margin-bottom: 24px; }
-.article-hero { margin-bottom: 40px; }
+.article-hero { margin-bottom: 40px; aspect-ratio: auto; height: auto; object-fit: initial; }
 .article-body { color: var(--ink-2); font-size: 17px; line-height: 1.65; max-width: 640px; }
 .article-body > * + * { margin-top: 1.1em; }
 .article-body h2 { font-size: 26px; line-height: 1.15; letter-spacing: -.03em; color: var(--fg); margin-top: 2em; }

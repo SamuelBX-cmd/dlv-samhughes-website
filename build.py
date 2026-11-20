@@ -136,7 +136,7 @@ def format_date(iso):
 
 def source_name(a):
     link = a.get("link", "")
-    if "linkedin.com" in link:
+    if "linkedin.com" in link or "lnkd.in" in link:
         return "LinkedIn"
     if a.get("first_published_in"):
         return a["first_published_in"]
@@ -211,7 +211,7 @@ def article_title_html(a):
 
 def article_source_label(a):
     year = a["date"][:4]
-    pub = a.get("first_published_in") or (source_name(a) if a.get("link") and not a["body"] else "")
+    pub = a.get("first_published_in") or (source_name(a) if a.get("link") else "")
     return f"{pub} · {year}" if pub else year
 
 
