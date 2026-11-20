@@ -78,7 +78,7 @@ def is_listed(page):
 # ---------- Articles ----------
 
 ARTICLES = os.path.join(ROOT, "articles")
-ARTICLE_FIELDS = {"title", "date", "summary", "image", "image_alt", "link", "first_published_in", "published"}
+ARTICLE_FIELDS = {"title", "date", "summary", "image", "image_alt", "thumbnail", "link", "first_published_in", "published"}
 
 
 def parse_article(path):
@@ -221,8 +221,10 @@ def articles_section(articles, heading, prefix):
         href = html.escape(article_href(a, prefix))
         ext = "" if a["body"] else ' target="_blank" rel="noopener"'
         img = ""
-        if a.get("image"):
-            img = (f'<div class="wimg"><img src="{html.escape(a["image"])}" alt="{html.escape(a.get("image_alt", ""))}" '
+        tile = a.get("thumbnail") or a.get("image")
+        if tile:
+            alt = "" if a.get("thumbnail") else a.get("image_alt", "")   # a thumbnail is decorative; the headline sits above it
+            img = (f'<div class="wimg"><img src="{html.escape(tile)}" alt="{html.escape(alt)}" '
                    f'loading="lazy" decoding="async"></div>')
         cards.append(f'    <a class="wcard" href="{href}"{ext}>'
                      f'<div class="wmeta"><h3>{html.escape(a["title"])}</h3>'

@@ -46,6 +46,7 @@ Articles are tiles in the "Some things that I’ve written" section on the home 
    | `summary` | One or two sentences on the tile (required) |
    | `image` | Tile and header image, e.g. `assets/img/articles/<short-name>.webp` |
    | `image_alt` | Description of the image for screen readers |
+   | `thumbnail` | Optional; a different image for the home page tile (5:4), e.g. the graphic without its text |
    | `link` | Where it was first posted, e.g. the LinkedIn URL |
    | `first_published_in` | Optional; adds "(first published in …)" to the tile |
    | `published` | `false` hides it without deleting the file |

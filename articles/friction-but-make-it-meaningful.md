@@ -3,6 +3,7 @@ title: Friction, but make it meaningful
 date: 2026-11-20
 summary: We've fallen out of love with frictionless experiences but what do we put in its place?
 image: assets/img/articles/friction-but-make-it-meaningful.webp
+thumbnail: assets/img/articles/friction-but-make-it-meaningful-thumb.webp
 image_alt: Two panels joined by a double-headed arrow. Left, a ladder in a pothole: Remove Friction & Pain, “We spend 80% of our effort fixing ‘pothole problems’ with the experience”. Right, a heart: Create Distinctive Brand Moments, “But elevating existing experiences creates 9x commercial value for the organisation.” Source: Forrester; Chip Heath, The Power of Defining Moments.
 link: https://lnkd.in/p/gWgnv3ZT
 ---
