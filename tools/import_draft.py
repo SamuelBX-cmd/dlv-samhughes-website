@@ -75,6 +75,12 @@ def import_article(doc, w):
         fields.append(("link", x["link"]))
     if x.get("first_published_in"):
         fields.append(("first_published_in", x["first_published_in"]))
+    # Keep a hand-made tile thumbnail if the article already has one
+    existing = os.path.join(ROOT, f"articles/{slug}.md")
+    if os.path.exists(existing):
+        m = re.search(r"^thumbnail:\s*(\S.*)$", open(existing, encoding="utf-8").read(), re.M)
+        if m:
+            fields.append(("thumbnail", m.group(1).strip()))
     head = "\n".join(f"{k}: {one_line(v)}" for k, v in fields)
     body = (x.get("body") or "").strip()
     w.text(f"articles/{slug}.md", f"---\n{head}\n---\n" + (f"\n{body}\n" if body else ""))
