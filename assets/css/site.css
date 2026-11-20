@@ -185,11 +185,15 @@ main > .row:first-child { border-top: 0; }
 .numbered + .link-arrow { margin-top: 4px; }
 
 /* ---------- Writing (article cards) ---------- */
-.writing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px 24px; }
+/* Each card spans three shared rows (headline, image, summary), so images
+   line up across a row even when one headline wraps further than its neighbour. */
+.writing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; row-gap: 0; }
 .wcard { display: flex; flex-direction: column; }
-.wmeta { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 8px; }
-.wmeta h3 { flex: 1; min-width: 0; }
-.wmeta .src { color: var(--muted); white-space: nowrap; }
+.writing .wcard { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 0; }
+.writing .wcard > p { padding-bottom: 48px; }
+.wmeta { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.wmeta h3 { min-width: 0; }
+.wmeta .src { color: var(--muted); }
 .wimg { overflow: hidden; background: var(--soft); }
 .wimg img, .article-hero {
   width: 100%;
