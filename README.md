@@ -23,7 +23,8 @@ Articles and case studies can be drafted in the site editor, a private claude.ai
 
 - **Articles:** headline, date, summary, original link, tile image and the article text in Markdown.
 - **Case studies:** project details, a cover image, then page blocks (text, full-width or column image, 2- or 3-across image grid, quote, numbers, video), reordered with the arrows. The editor builds the page; the copy is yours.
-- **Images** are resized in the browser before upload: 2400px wide for covers and full-width images, 1800px for column images, 1600px for article images and 2-across grids, 1200px for 3-across grids, saved as WebP (JPEG in Safari).
+- **Experiments:** upload something already built (a folder with an `index.html`, or a single HTML file). It is published untouched at `/experiments/<name>/`, unlinked and marked noindex. Uploading again replaces the whole experiment.
+- **Images** for articles and case studies are resized in the browser before upload: 2400px wide for covers and full-width images, 1800px for column images, 1600px for article images and 2-across grids, 1200px for 3-across grids, saved as WebP (JPEG in Safari).
 
 When a draft is marked **Ready to publish**, ask Claude to "publish my website drafts". Claude reads the ready drafts and downloads their images, runs `tools/import_draft.py` to write `articles/<name>.md` or `case-studies/<name>.json` plus images, builds, opens a PR and merges it, then marks the drafts Published in the editor.
 
