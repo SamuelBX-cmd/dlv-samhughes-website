@@ -285,33 +285,169 @@ def header_theme(body):
     return m.group(1) if m else "white"
 
 
-def portfolio_index(page, pages, live):
-    items = [p for p in pages.values() if p.get("parent") == page["id"] and p["id"] in live and is_listed(p)]
+# ---------- Case studies ----------
+
+CASE_STUDIES = os.path.join(ROOT, "case-studies")
+BLOCK_TYPES = {"text", "image", "images", "quote", "stats", "video"}
+
+
+def load_case_studies():
+    """Read case-studies/<slug>.json (files starting with "_" are skipped)."""
+    if not os.path.isdir(CASE_STUDIES):
+        return []
     out = []
-    for i, p in enumerate(items):
-        delim = '<span class="pf-delim" aria-hidden="true">—</span>' if i < len(items) - 1 else ""
-        out.append(f'<a class="pf-item" href="page:{p["id"]}" data-id="{p["id"]}">'
-                   f'<span class="pf-title">{html.escape(p.get("label", p["id"]))}</span>{delim}</a>')
-    covers = "".join(f'<img src="{html.escape(p["cover"])}" alt="" data-for="{p["id"]}">' for p in items if p.get("cover"))
-    return (f'<section class="sec t-light-bold h-large sec-portfolio">\n'
-            f'  <div class="pf-covers" aria-hidden="true">{covers}</div>\n'
-            f'  <nav class="pf-list" aria-label="Case studies">{"".join(out)}</nav>\n</section>\n')
+    for fn in sorted(os.listdir(CASE_STUDIES)):
+        if not fn.endswith(".json") or fn.startswith(("_", ".")):
+            continue
+        slug = fn[:-5]
+        where = f"case-studies/{fn}"
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", slug):
+            sys.exit(f"{where}: name files with lowercase letters, numbers and hyphens only")
+        try:
+            cs = json.loads(read(os.path.join(CASE_STUDIES, fn)))
+        except json.JSONDecodeError as e:
+            sys.exit(f"{where}: not valid JSON ({e})")
+        for key in ("title", "cover"):
+            if not cs.get(key):
+                sys.exit(f"{where}: '{key}' is required")
+        for i, b in enumerate(cs.get("blocks", [])):
+            if b.get("type") not in BLOCK_TYPES:
+                sys.exit(f"{where}: block {i + 1} has unknown type '{b.get('type')}'. Known: {', '.join(sorted(BLOCK_TYPES))}")
+        cs["slug"] = slug
+        out.append(cs)
+    out.sort(key=lambda c: (c.get("order", 100), c["title"].lower()))
+    return out
+
+
+def work_meta(p):
+    cs = p.get("case") or {}
+    bits = [cs.get("discipline") or ", ".join(cs.get("services", [])[:2]), str(cs.get("year", ""))]
+    return " · ".join(b for b in bits if b)
+
+
+def work_cards(items, prefix_link=True):
+    cards = []
+    for p in items:
+        cover = p.get("cover", "")
+        img = (f'<div class="wimg"><img src="{html.escape(cover)}" alt="{html.escape(p.get("cover_alt", ""))}" '
+               f'loading="lazy" decoding="async"></div>') if cover else ""
+        cards.append(f'    <a class="wcard work" href="page:{p["id"]}">'
+                     f'<div class="wmeta"><h3>{html.escape(p.get("label", p["id"]))}</h3>'
+                     f'<span class="src">{html.escape(work_meta(p))}</span></div>{img}</a>')
+    return "\n".join(cards)
+
+
+def portfolio_children(page_id, pages, live):
+    return [p for p in pages.values() if p.get("parent") == page_id and p["id"] in live and is_listed(p)]
+
+
+def portfolio_index(page, pages, live):
+    items = portfolio_children(page["id"], pages, live)
+    return (f'<section class="row wrap hero">\n  <div class="label-spacer" aria-hidden="true"></div>\n'
+            f'  <div class="content"><p class="status">Selected work</p>'
+            f'<h1 class="display"><span class="ink">Case studies</span> in brand, experience and strategy.</h1></div>\n</section>\n'
+            f'<section class="row wrap" id="work">\n  <div class="label"><h2>Projects</h2><p>{len(items)} case studies</p></div>\n'
+            f'  <div class="content works">\n{work_cards(items)}\n  </div>\n</section>\n')
+
+
+def work_section(pages, live, prefix):
+    """Home page "Selected work": the first two case studies, if the portfolio is live."""
+    if "portfolio" not in live:
+        return ""
+    items = portfolio_children("portfolio", pages, live)[:2]
+    if not items:
+        return ""
+    return (f'<section class="row wrap" id="work">\n  <div class="label"><h2>Selected work</h2><p>The work I’m proud of</p></div>\n'
+            f'  <div class="content works">\n{work_cards(items)}\n'
+            f'    <a class="link-arrow" href="page:portfolio">See all projects</a>\n  </div>\n</section>\n')
+
+
+def img_tag(src, alt, cls="", eager=False):
+    c = f' class="{cls}"' if cls else ""
+    load = 'fetchpriority="high"' if eager else 'loading="lazy"'
+    return f'<img{c} src="{html.escape(src)}" alt="{html.escape(alt or "")}" {load} decoding="async">'
+
+
+def caption(text):
+    return f"<figcaption>{md_inline(text)}</figcaption>" if text else ""
+
+
+def render_block(b):
+    t = b["type"]
+    if t == "text":
+        label = (f'<div class="label"><h2>{html.escape(b["heading"])}</h2>'
+                 + (f'<p>{html.escape(b["subheading"])}</p>' if b.get("subheading") else "") + "</div>") \
+            if b.get("heading") else '<div class="label-spacer" aria-hidden="true"></div>'
+        return f'<section class="row wrap cs-text">{label}<div class="content prose-lg">{md_to_html(b.get("body", ""))}</div></section>'
+    if t == "image":
+        size = b.get("size", "full")
+        fig = f'<figure class="cs-figure">{img_tag(b["src"], b.get("alt"))}{caption(b.get("caption"))}</figure>'
+        if size == "wide":
+            return f'<section class="wrap cs-media cs-split"><div class="label-spacer" aria-hidden="true"></div>{fig}</section>'
+        return f'<section class="wrap cs-media">{fig}</section>'
+    if t == "images":
+        items = b.get("items", [])
+        cols = b.get("columns") or (3 if len(items) % 3 == 0 and len(items) > 2 else 2)
+        figs = "".join(f'<figure class="cs-figure">{img_tag(i["src"], i.get("alt"))}{caption(i.get("caption"))}</figure>' for i in items)
+        return f'<section class="wrap cs-media"><div class="cs-grid cols-{int(cols)}">{figs}</div>{caption(b.get("caption"))}</section>'
+    if t == "quote":
+        who = f'<p class="cs-quote-by">{html.escape(b["attribution"])}</p>' if b.get("attribution") else ""
+        return (f'<section class="row wrap cs-quote"><div class="label-spacer" aria-hidden="true"></div>'
+                f'<blockquote class="content"><p class="lead"><span class="ink">{html.escape(b.get("text", ""))}</span></p>{who}</blockquote></section>')
+    if t == "stats":
+        cells = "".join(f'<div class="cs-stat"><p class="cs-stat-value">{html.escape(str(i.get("value", "")))}</p>'
+                        f'<p class="muted">{html.escape(i.get("label", ""))}</p></div>' for i in b.get("items", []))
+        label = f'<div class="label"><h2>{html.escape(b["heading"])}</h2></div>' if b.get("heading") else '<div class="label-spacer" aria-hidden="true"></div>'
+        return f'<section class="row wrap cs-stats">{label}<div class="content cs-stat-grid">{cells}</div></section>'
+    if t == "video":
+        src = b.get("src", "")
+        if re.match(r"https?://(www\.)?(youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)/", src):
+            m = re.search(r"(?:v=|youtu\.be/|embed/)([\w-]{6,})", src)
+            if "youtu" in src and m:
+                embed = f"https://www.youtube-nocookie.com/embed/{m.group(1)}"
+            else:
+                m = re.search(r"vimeo\.com/(?:video/)?(\d+)", src)
+                embed = f"https://player.vimeo.com/video/{m.group(1)}" if m else src
+            media = f'<div class="cs-embed"><iframe src="{html.escape(embed)}" title="{html.escape(b.get("alt") or "Video")}" allow="fullscreen; picture-in-picture" loading="lazy"></iframe></div>'
+        else:
+            poster = f' poster="{html.escape(b["poster"])}"' if b.get("poster") else ""
+            media = f'<video src="{html.escape(src)}"{poster} controls playsinline preload="metadata"></video>'
+        return f'<section class="wrap cs-media"><figure class="cs-figure">{media}{caption(b.get("caption"))}</figure></section>'
+    return ""
+
+
+def case_study_page(page):
+    cs = page["case"]
+    status = " · ".join(x for x in [cs.get("client", ""), str(cs.get("year", ""))] if x)
+    meta = []
+    for label, key in (("Client", "client"), ("Year", "year"), ("Role", "role"), ("Services", "services")):
+        v = cs.get(key)
+        if v:
+            v = ", ".join(v) if isinstance(v, list) else str(v)
+            meta.append(f'<div><p class="muted">{label}</p><p>{html.escape(v)}</p></div>')
+    intro = f'<p class="prose">{html.escape(cs["intro"])}</p>' if cs.get("intro") else ""
+    head = (f'<section class="row wrap hero cs-head">\n  <div class="label-spacer" aria-hidden="true"></div>\n'
+            f'  <div class="content">' + (f'<p class="status">{html.escape(status)}</p>' if status else "")
+            + f'<h1 class="display"><span class="ink">{html.escape(cs["title"])}</span>'
+            + (f' {html.escape(cs["headline"])}' if cs.get("headline") else "") + f'</h1>{intro}'
+            + (f'<div class="cs-meta">{"".join(meta)}</div>' if meta else "") + '</div>\n</section>\n')
+    cover = f'<section class="wrap cs-media cs-cover"><figure class="cs-figure">{img_tag(cs["cover"], cs.get("cover_alt"), eager=True)}</figure></section>\n'
+    return head + cover + "\n".join(render_block(b) for b in cs.get("blocks", [])) + "\n"
 
 
 def pagination(page, pages, live):
-    siblings = [p for p in pages.values() if p.get("parent") == page.get("parent") and p["id"] in live and is_listed(p)]
+    siblings = portfolio_children(page.get("parent"), pages, live) if page.get("parent") else []
     if not page.get("parent") or not is_listed(page) or len(siblings) < 2:
         return ""
     i = [p["id"] for p in siblings].index(page["id"])
-    prev_p = siblings[i - 1] if i > 0 else None
-    next_p = siblings[i + 1] if i + 1 < len(siblings) else None
-    arrow_l = '<svg viewBox="0 0 44 18" aria-hidden="true"><path d="M9.9 17 1.4 9l8.5-8M1.4 9H44"/></svg>'
-    arrow_r = '<svg viewBox="0 0 44 18" aria-hidden="true"><path d="m34.1 1 8.5 8-8.5 8M42.6 9H0"/></svg>'
-    left = (f'<a class="pg-link pg-prev" href="page:{prev_p["id"]}">{arrow_l}<span class="sr">Previous</span>'
-            f'<span class="pg-title">{html.escape(prev_p.get("label", ""))}</span></a>') if prev_p else "<span></span>"
-    right = (f'<a class="pg-link pg-next" href="page:{next_p["id"]}"><span class="sr">Next</span>'
-             f'<span class="pg-title">{html.escape(next_p.get("label", ""))}</span>{arrow_r}</a>') if next_p else ""
-    return f'<nav class="pagination" aria-label="More case studies">{left}{right}</nav>\n'
+    prev_p = siblings[i - 1]
+    next_p = siblings[(i + 1) % len(siblings)]
+    return (f'<nav class="row wrap pager" aria-label="More case studies">'
+            f'<div class="label"><h2>More work</h2><p><a href="page:{page["parent"]}">All projects</a></p></div>'
+            f'<div class="content pager-links">'
+            f'<a class="pager-link" href="page:{prev_p["id"]}"><span class="muted">Previous</span><span>{html.escape(prev_p.get("label", ""))}</span></a>'
+            f'<a class="pager-link next" href="page:{next_p["id"]}"><span class="muted">Next</span><span>{html.escape(next_p.get("label", ""))}</span></a>'
+            f'</div></nav>\n')
 
 
 def nav_html(cfg, pages, live, current, prefix):
@@ -371,6 +507,18 @@ def build():
                 "title": f"{a['title']} — {cfg['site']['title']}", "published": True, "listed": False}
         pages[a["slug"]] = page
         cfg["pages"].append(page)
+    for cs in load_case_studies():
+        page = {"id": cs["slug"], "path": "portfolio/" + cs["slug"], "parent": "portfolio", "type": "case-study",
+                "case": cs, "label": cs["title"], "cover": cs["cover"], "cover_alt": cs.get("cover_alt", ""),
+                "title": f"{cs['title']} — {cfg['site']['title']}", "published": cs.get("published", True)}
+        if cs["slug"] in pages:
+            if pages[cs["slug"]].get("parent") != "portfolio":
+                sys.exit(f"case-studies/{cs['slug']}.json: name clashes with page '{cs['slug']}' in site.json")
+            cfg["pages"].remove(pages[cs["slug"]])   # the JSON version replaces an older hand-built page
+        pages[cs["slug"]] = page
+        cfg["pages"].append(page)
+    # keep case studies in their own order after any older ones
+    cfg["pages"].sort(key=lambda p: (p.get("type") == "case-study", p.get("case", {}).get("order", 100)))
     live = {pid for pid, p in pages.items() if is_live(p, pages)}
     layout = read(os.path.join(SRC, "layout.html"))
     footer = read(os.path.join(SRC, "partials", "footer.html"))
@@ -387,12 +535,18 @@ def build():
         prefix = "../" * depth or "./"
         if page.get("type") == "portfolio-index":
             meta, body = {"title": page.get("title", cfg["site"]["title"])}, portfolio_index(page, pages, live)
+        elif page.get("type") == "case-study":
+            cs = page["case"]
+            meta = {"description": cs.get("summary") or cs.get("intro", "")[:160]}
+            body = case_study_page(page) + pagination(page, pages, live)
         elif page.get("type") == "article":
             a = page["article"]
             meta, body = {"description": a["summary"]}, article_page(a, prefix, prefix)
         else:
             meta, body = front_matter(read(os.path.join(SRC, page["source"])))
             body += pagination(page, pages, live)
+            if "<!-- work -->" in body:
+                body = body.replace("<!-- work -->", work_section(pages, live, prefix))
             if "<!-- articles -->" in body:
                 heading = cfg.get("articles", {}).get("heading", "Writing")
                 body = body.replace("<!-- articles -->", articles_section(articles, heading, prefix))
@@ -404,6 +558,9 @@ def build():
                              pages, live, prefix, warnings, "partials/footer.html")
         title = page.get("title") or meta.get("title") or cfg["site"]["title"]
         share = cfg["site"].get("share_image", "")
+        if page.get("type") == "case-study":
+            share = page["case"]["cover"]
+            used.add(share)
         if page.get("type") == "article" and page["article"].get("image"):
             share = page["article"]["image"]
             used.add(share)
