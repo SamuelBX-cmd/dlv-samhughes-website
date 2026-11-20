@@ -80,7 +80,8 @@ Python 3 is the only requirement. The deploy runs `python3 build.py` in GitHub A
 | `src/layout.html` | Shared page shell: head, header, mobile menu, footer slot |
 | `src/partials/footer.html` | Footer used on every page |
 | `src/pages/` | One file per page, written as sections of blocks |
-| `assets/css/site.css` | Theme colours, type scale, grid, components |
+| `assets/css/site.css` | Current design: type, layout, header, sections, article cards, footer |
+| `assets/css/legacy.css` | Old Squarespace-style grid, loaded only by pages still built from `<section class="sec">` blocks (the hidden portfolio pages) |
 | `assets/js/site.js` | Header offset, mobile menu, portfolio hover covers |
 | `assets/img/`, `assets/video/` | Images and video, one folder per page |
 | `articles/` | One Markdown file per article; `_template.md` is the starting point |

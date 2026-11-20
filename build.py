@@ -21,6 +21,7 @@ without body text links its tile straight to its "link".
 Each folder in experiments/ is copied as-is to /experiments/<folder>/, with a
 noindex tag added to its HTML. Folders starting with "_" are skipped.
 """
+import datetime
 import html
 import json
 import os
@@ -208,27 +209,34 @@ def article_title_html(a):
     return t
 
 
+def article_source_label(a):
+    year = a["date"][:4]
+    pub = a.get("first_published_in") or (source_name(a) if a.get("link") and not a["body"] else "")
+    return f"{pub} · {year}" if pub else year
+
+
 def articles_section(articles, heading, prefix):
-    tiles = []
+    cards = []
     for a in articles:
         href = html.escape(article_href(a, prefix))
         ext = "" if a["body"] else ' target="_blank" rel="noopener"'
         img = ""
         if a.get("image"):
-            img = (f'<a class="at-img" href="{href}"{ext} tabindex="-1" aria-hidden="true">'
-                   f'<img src="{html.escape(a["image"])}" alt="{html.escape(a.get("image_alt", ""))}" loading="lazy" decoding="async"></a>')
-        tiles.append(f'    <article class="article-tile">{img}'
-                     f'<div class="at-text"><h4>{article_title_html(a)}</h4><p>{html.escape(a["summary"])}</p></div>'
-                     f'<a class="btn btn-medium" href="{href}"{ext}>Read it here</a></article>')
-    return (f'<section class="sec t-light-bold h-small sec-articles" id="writing">\n'
-            f'  <div class="articles-wrap">\n  <h4 class="articles-heading">{html.escape(heading)}</h4>\n'
-            f'  <div class="article-grid">\n' + "\n".join(tiles) + "\n  </div>\n  </div>\n</section>\n")
+            img = (f'<div class="wimg"><img src="{html.escape(a["image"])}" alt="{html.escape(a.get("image_alt", ""))}" '
+                   f'loading="lazy" decoding="async"></div>')
+        cards.append(f'    <a class="wcard" href="{href}"{ext}>'
+                     f'<div class="wmeta"><h3>{html.escape(a["title"])}</h3>'
+                     f'<span class="src">{html.escape(article_source_label(a))}</span></div>'
+                     f'{img}<p>{html.escape(a["summary"])}</p></a>')
+    return (f'<section class="row wrap" id="writing">\n'
+            f'  <div class="label"><h2>Writing</h2><p>{html.escape(heading)}</p></div>\n'
+            f'  <div class="content writing">\n' + "\n".join(cards) + "\n  </div>\n</section>\n")
 
 
 def article_page(a, prefix, home_url):
-    meta = format_date(a["date"])
+    side = [f'<a class="back" href="{home_url}#writing">All writing</a>', f"<p>{format_date(a['date'])}</p>"]
     if a.get("first_published_in"):
-        meta += f" · First published in {html.escape(a['first_published_in'])}"
+        side.append(f"<p>First published in {html.escape(a['first_published_in'])}</p>")
     hero = ""
     if a.get("image"):
         hero = f'<img class="article-hero" src="{html.escape(a["image"])}" alt="{html.escape(a.get("image_alt", ""))}">'
@@ -236,10 +244,9 @@ def article_page(a, prefix, home_url):
     if a.get("link"):
         source = (f'<p class="article-source">Originally published on '
                   f'<a href="{html.escape(a["link"])}" target="_blank" rel="noopener">{html.escape(source_name(a))}</a>.</p>')
-    return (f'<section class="sec t-light-bold h-small sec-article">\n<article class="article-wrap">\n'
-            f'<p class="article-back"><a href="{home_url}#writing">All writing</a></p>\n'
-            f'<h1>{html.escape(a["title"])}</h1>\n<p class="article-meta">{meta}</p>\n{hero}\n'
-            f'<div class="article-body">\n{md_to_html(a["body"])}\n</div>\n{source}\n</article>\n</section>\n')
+    return (f'<article class="row wrap hero article-head">\n<div class="article-side">{"".join(side)}</div>\n'
+            f'<div class="content">\n<h1 class="display"><span class="ink">{html.escape(a["title"])}</span></h1>\n{hero}\n'
+            f'<div class="article-body">\n{md_to_html(a["body"])}\n</div>\n{source}\n</div>\n</article>\n')
 
 
 def resolve_links(body, pages, live, prefix, warnings, source):
@@ -392,13 +399,22 @@ def build():
         source = page.get("source", pid)
         theme = header_theme(body)
         body = resolve_links(body, pages, live, prefix, warnings, source)
-        foot = resolve_links(footer, pages, live, prefix, warnings, "partials/footer.html")
+        foot = resolve_links(footer.replace("{{year}}", str(datetime.date.today().year))
+                             .replace("{{nav}}", nav_html(cfg, pages, live, page, prefix)),
+                             pages, live, prefix, warnings, "partials/footer.html")
         title = page.get("title") or meta.get("title") or cfg["site"]["title"]
         share = cfg["site"].get("share_image", "")
         if page.get("type") == "article" and page["article"].get("image"):
             share = page["article"]["image"]
             used.add(share)
         desc = meta.get("description", "")
+        cta = ""
+        if "contact" in live and pid != "contact":
+            cta = f'<a class="btn-soft" href="{url_for(pages["contact"], prefix)}">Get in touch</a>'
+        # Pages still built from the old Squarespace-style sections need the old stylesheet.
+        extra_css = '\n<link rel="stylesheet" href="assets/css/legacy.css">' if 'class="sec ' in body else ""
+        if extra_css:
+            used.add("assets/css/legacy.css")
         doc = (layout
                .replace("{{lang}}", cfg["site"].get("lang", "en"))
                .replace("{{title}}", html.escape(title))
@@ -411,6 +427,8 @@ def build():
                .replace("{{footer}}", foot)
                .replace("{{robots}}", "" if is_listed(page) else "\n" + NOINDEX)
                .replace("{{page_id}}", pid)
+               .replace("{{cta}}", cta)
+               .replace("{{extra_css}}", extra_css)
                .replace("{{canonical}}", cfg["site"].get("url", "").rstrip("/") + "/" + (page["path"] + "/" if page["path"] else ""))
                .replace("{{share_image}}", cfg["site"].get("url", "").rstrip("/") + "/" + share))
         doc = rewrite_assets(doc, prefix, used)
