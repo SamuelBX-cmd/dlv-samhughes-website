@@ -1,0 +1,23 @@
+{
+  "title": "Project name",
+  "headline": "a short line that finishes the title in grey.",
+  "client": "Client name",
+  "year": 2025,
+  "role": "Your role",
+  "services": ["Brand strategy", "Experience design"],
+  "discipline": "Shown on the project card, e.g. Brand experience",
+  "intro": "One or two sentences under the title.",
+  "summary": "Description for search engines and link previews.",
+  "cover": "assets/img/project-name/cover.webp",
+  "cover_alt": "Describe the cover image",
+  "order": 1,
+  "published": true,
+  "blocks": [
+    {"type": "text", "heading": "The challenge", "subheading": "Optional second line", "body": "Markdown text."},
+    {"type": "image", "src": "assets/img/project-name/01.webp", "alt": "", "caption": "", "size": "full or wide"},
+    {"type": "images", "columns": 2, "items": [{"src": "assets/img/project-name/02.webp", "alt": ""}, {"src": "assets/img/project-name/03.webp", "alt": ""}]},
+    {"type": "quote", "text": "A pull quote.", "attribution": "Name, Title"},
+    {"type": "stats", "heading": "Outcomes", "items": [{"value": "32%", "label": "What it measures"}]},
+    {"type": "video", "src": "YouTube or Vimeo link, or assets/video/project-name.mp4", "caption": ""}
+  ]
+}
