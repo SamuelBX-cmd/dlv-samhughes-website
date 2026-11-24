@@ -1,0 +1,164 @@
+/* samhughes.com.au: motion layer.
+   Changes how the site moves, never how it looks at rest. Remove this file and
+   motion.js and the site renders exactly as before.
+
+   Springs are Material 3 Expressive motion tokens (Google's Compose values),
+   converted to CSS linear() easings sampled from the spring maths.
+   Expression level: balanced, tuned quiet for a monochrome site.
+   - Content (reveals, page arrival, header): STANDARD springs, damping 0.9, no visible bounce.
+   - Things you touch (arrows, buttons, cards, menu icon): EXPRESSIVE springs, a small overshoot.
+   - Colour and opacity: EFFECTS springs, never overshoot. */
+
+:root {
+  /* curves: one per damping ratio; stiffness only sets the duration */
+  --m-c06: linear(0, 0.071, 0.235, 0.435, 0.631, 0.8, 0.929, 1.017, 1.069, 1.092, 1.094, 1.083, 1.065, 1.046, 1.028, 1.014, 1.003, 0.996, 0.992, 0.991, 0.991, 0.993, 0.995, 0.996, 1);
+  --m-c08: linear(0, 0.047, 0.155, 0.291, 0.432, 0.563, 0.677, 0.771, 0.846, 0.903, 0.945, 0.974, 0.994, 1.005, 1.012, 1.015, 1.015, 1.014, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1);
+  --m-c09: linear(0, 0.025, 0.088, 0.171, 0.264, 0.359, 0.45, 0.536, 0.613, 0.681, 0.74, 0.79, 0.833, 0.868, 0.898, 0.921, 0.94, 0.955, 0.967, 0.977, 0.984, 0.989, 0.993, 0.996, 1);
+  --m-c10: linear(0, 0.157, 0.411, 0.623, 0.771, 0.866, 0.923, 0.957, 0.976, 0.987, 0.993, 0.996, 1);
+
+  /* tokens: duration + curve */
+  --m-exp-fast: 350ms var(--m-c06);   /* expressive fast spatial  0.6 / 800  */
+  --m-exp-def:  410ms var(--m-c08);   /* expressive default spatial 0.8 / 380 */
+  --m-exp-slow: 570ms var(--m-c08);   /* expressive slow spatial  0.8 / 200  */
+  --m-std-def:  220ms var(--m-c09);   /* standard default spatial 0.9 / 700  */
+  --m-std-slow: 330ms var(--m-c09);   /* standard slow spatial    0.9 / 300  */
+  --m-fx-fast:  140ms var(--m-c10);   /* fast effects    1.0 / 3800 */
+  --m-fx-def:   210ms var(--m-c10);   /* default effects 1.0 / 1600 */
+  --m-fx-slow:  300ms var(--m-c10);   /* slow effects    1.0 / 800  */
+
+  --m-rise: 16px;
+}
+
+/* Browsers without linear(): Google's published spring-to-curve conversions */
+@supports not (transition-timing-function: linear(0, 1)) {
+  :root {
+    --m-exp-fast: 350ms cubic-bezier(0.42, 1.67, 0.21, 0.90);
+    --m-exp-def:  500ms cubic-bezier(0.38, 1.21, 0.22, 1.00);
+    --m-exp-slow: 650ms cubic-bezier(0.39, 1.29, 0.35, 0.98);
+    --m-std-def:  500ms cubic-bezier(0.27, 1.06, 0.18, 1.00);
+    --m-std-slow: 750ms cubic-bezier(0.27, 1.06, 0.18, 1.00);
+    --m-fx-fast:  150ms cubic-bezier(0.31, 0.94, 0.34, 1.00);
+    --m-fx-def:   200ms cubic-bezier(0.34, 0.80, 0.34, 1.00);
+    --m-fx-slow:  300ms cubic-bezier(0.34, 0.88, 0.34, 1.00);
+  }
+}
+
+/* ---------- Reveal: page arrival and sections coming into view ----------
+   Only applies once the head script has added .motion (JS on, motion allowed).
+   motion.js adds .in as each element enters the viewport, with a stagger in --d. */
+.motion :where(main .row > .label,
+  main .row > .article-side,
+  main .row > .content > :not(.numbered, .display, .lead),
+  main .numbered > li,
+  .site-footer .foot > *,
+  .site-footer .foot-base) {   /* :where keeps this low so .m-in always wins */
+  opacity: 0;
+  translate: 0 var(--m-rise);
+}
+.motion .m-in {
+  opacity: 1;
+  translate: none;
+}
+.motion .m-in:not(.m-done) {
+  transition:
+    translate var(--m-std-slow) var(--d, 0ms),
+    opacity var(--m-fx-slow) var(--d, 0ms);
+}
+
+/* Headlines: hidden until motion.js has split them into words, then each line of words
+   slides up from behind its own mask. The original markup is put back once they land. */
+.motion :where(main .display, main .lead):not(.m-split) { opacity: 0; }
+.m-w { display: inline-block; overflow: clip; overflow-clip-margin: 0; vertical-align: top;
+       padding-bottom: .14em; margin-bottom: -.14em; }
+.m-wi { display: inline-block; translate: 0 115%; }
+.m-in .m-wi { translate: none; transition: translate var(--m-exp-slow); transition-delay: calc(var(--d, 0ms) + var(--l, 0ms)); }
+
+/* Images: a curtain lifts from the bottom while the picture settles from a slight zoom */
+.wimg, .article-hero { transition: clip-path var(--m-exp-slow); transition-delay: calc(var(--d, 0ms) + 80ms); }
+.motion :where(.wcard:not(.m-in)) .wimg,
+.motion :where(.article-hero:not(.m-in)) { clip-path: inset(100% 0 0 0); }
+.motion :where(.wcard:not(.m-in)) .wimg img { transform: scale(1.08); }
+
+/* Section labels: the plus turns into place as its section arrives (a quarter turn ends where it began) */
+.label h2::before { transition: rotate var(--m-exp-slow); transition-delay: 120ms; }
+.motion :where(.label:not(.m-in)) h2::before { rotate: -90deg; }
+
+/* ---------- Things you touch ---------- */
+/* Arrow links: the arrow springs on hover and travels further on press */
+.link-arrow::after { transition: transform var(--m-exp-fast); }
+.link-arrow:active::after { transform: translate(4px, -4px); }
+
+/* Soft button: squeezes slightly on press, background on an effects spring */
+.btn-soft { transition: background var(--m-fx-fast), transform var(--m-exp-fast); }
+.btn-soft:active { transform: scale(.97); }
+
+/* Text links: colour on an effects spring, and a hairline draws in under them on hover */
+.site-nav > a:not(.btn-soft), .foot-col a, .link-arrow, .article-side .back {
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 0 1px;
+  transition: color var(--m-fx-fast), background-size var(--m-exp-def);
+}
+.link-arrow { background-position: 0 calc(100% - 7px); }
+.site-nav > a:not(.btn-soft):hover, .foot-col a:hover, .link-arrow:hover, .article-side .back:hover { background-size: 100% 1px; }
+.link-arrow:hover { background-size: calc(100% - 18px) 1px; }
+
+/* Lists: the item under the pointer stays sharp, its neighbours step back */
+@media (hover: hover) {
+  .wcard, .numbered li { transition: opacity var(--m-fx-def), transform var(--m-exp-fast); }
+  .writing:hover .wcard:not(:hover), .numbered:hover li:not(:hover) { opacity: .45; }
+}
+
+/* Writing cards: image zoom on an expressive spring; a small press */
+.wimg img { transition: transform var(--m-exp-def); }
+.wcard { transition: transform var(--m-exp-fast); }
+.wcard:active { transform: scale(.99); }
+.pager-link { transition: background var(--m-fx-fast), transform var(--m-exp-fast); }
+.pager-link:active { transform: scale(.99); }
+
+/* Capabilities: the row title leans in on hover */
+.numbered h3 { transition: translate var(--m-exp-fast); }
+.numbered li:hover h3 { translate: 4px 0; }
+
+/* ---------- Header: steps out of the way while reading, returns on scroll up ---------- */
+.site-header { transition: transform var(--m-std-def); }
+.site-header.m-hide { transform: translateY(-100%); }
+
+/* ---------- Mobile menu ---------- */
+.menu-toggle i { transition: transform var(--m-exp-fast), top var(--m-exp-fast); }
+.mobile-menu { opacity: 0; transition: opacity var(--m-fx-fast); }
+.mobile-menu.m-open { opacity: 1; transition: opacity var(--m-fx-def); }
+.mobile-menu nav > * { opacity: 0; translate: 0 12px; transition: opacity var(--m-fx-fast), translate var(--m-std-def); }
+.mobile-menu.m-open nav > * {
+  opacity: 1; translate: none;
+  transition: opacity var(--m-fx-def), translate var(--m-std-slow);
+}
+.mobile-menu.m-open nav > :nth-child(2) { transition-delay: 30ms; }
+.mobile-menu.m-open nav > :nth-child(3) { transition-delay: 60ms; }
+.mobile-menu.m-open nav > :nth-child(4) { transition-delay: 90ms; }
+.mobile-menu.m-open nav > :nth-child(n+5) { transition-delay: 120ms; }
+
+/* ---------- Smooth scrolling (Lenis, desktop only) ---------- */
+html.lenis, html.lenis body { height: auto; }
+.lenis:not(.lenis-autoToggle).lenis-stopped { overflow: clip; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+
+/* ---------- Between pages (Chrome, Edge, Safari 18.2+; others just load normally) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+  @view-transition { navigation: auto; }
+  .site-header { view-transition-name: m-header; }
+  ::view-transition-old(root) { animation: 140ms linear(0, 0.157, 0.411, 0.623, 0.771, 0.866, 0.923, 0.957, 0.976, 0.987, 0.993, 0.996, 1) both m-out; }
+  ::view-transition-new(root) { animation: 330ms linear(0, 0.025, 0.088, 0.171, 0.264, 0.359, 0.45, 0.536, 0.613, 0.681, 0.74, 0.79, 0.833, 0.868, 0.898, 0.921, 0.94, 0.955, 0.967, 0.977, 0.984, 0.989, 0.993, 0.996, 1) both m-new; }
+  ::view-transition-group(m-header) { animation: none; }
+}
+@keyframes m-out { to { opacity: 0; } }
+@keyframes m-new { from { opacity: 0; translate: 0 var(--m-rise, 16px); } }
+
+/* ---------- Reduced motion: nothing travels; state changes are instant ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .site-header.m-hide { transform: none; }
+  .mobile-menu, .mobile-menu nav > * { opacity: 1; translate: none; }
+  .link-arrow:active::after, .btn-soft:active, .wcard:active, .pager-link:active { transform: none; }
+  .numbered li:hover h3 { translate: none; }
+  .link-arrow:hover, .site-nav > a:hover, .foot-col a:hover { transition: none; }
+}
