@@ -1,0 +1,18 @@
+/* Custom cursor: one cursor that takes the shape of what it is over.
+   Fine pointers only; touch and reduced-motion users keep the live site. */
+.cx, .cx * { cursor: none !important; }
+.cur-body, .cur-read { position: fixed; left: 0; top: 0; z-index: 400; pointer-events: none; transition: opacity 200ms linear; }
+/* the blend has to sit on the top-level element, or it only blends inside its own layer */
+.cur-body { background: #fff; mix-blend-mode: difference; }
+.cur-read { display: grid; place-items: center; border-radius: 50%;
+  background: #000; color: #fff; font: 500 14px/1 var(--font); letter-spacing: -.01em; white-space: nowrap;
+  opacity: 0;
+}
+.cur-read span { display: inline-flex; align-items: center; gap: 4px; opacity: 0; translate: 0 6px;
+  transition: opacity 140ms linear, translate 350ms linear(0, 0.071, 0.235, 0.435, 0.631, 0.8, 0.929, 1.017, 1.069, 1.092, 1.094, 1.083, 1.065, 1.046, 1.028, 1.014, 1.003, 0.996, 0.992, 0.991, 0.991, 0.993, 0.995, 0.996, 1); }
+.cur-read.tile span { opacity: 1; translate: none; transition-delay: 90ms; }
+.cur-read i { display: none; width: 10px; height: 10px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 9 9 3M4 3h5v5' fill='none' stroke='%23000' stroke-width='1.4'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 9 9 3M4 3h5v5' fill='none' stroke='%23000' stroke-width='1.4'/%3E%3C/svg%3E") center / contain no-repeat; }
+.cur-read.ext i { display: block; }
+.cur-body.out, .cur-read.out { opacity: 0 !important; }
