@@ -250,7 +250,6 @@ main > .row:first-child { border-top: 0; }
   color: var(--muted);
   font-size: 14px;
 }
-.built-with a { color: var(--fg); }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 809px) {
