@@ -567,9 +567,6 @@ def build():
             share = page["article"]["image"]
             used.add(share)
         desc = meta.get("description", "")
-        cta = ""
-        if "contact" in live and pid != "contact":
-            cta = f'<a class="btn-soft" href="{url_for(pages["contact"], prefix)}">Get in touch</a>'
         # Pages still built from the old Squarespace-style sections need the old stylesheet.
         extra_css = '\n<link rel="stylesheet" href="assets/css/legacy.css">' if 'class="sec ' in body else ""
         if extra_css:
@@ -586,7 +583,6 @@ def build():
                .replace("{{footer}}", foot)
                .replace("{{robots}}", "" if is_listed(page) else "\n" + NOINDEX)
                .replace("{{page_id}}", pid)
-               .replace("{{cta}}", cta)
                .replace("{{extra_css}}", extra_css)
                .replace("{{canonical}}", cfg["site"].get("url", "").rstrip("/") + "/" + (page["path"] + "/" if page["path"] else ""))
                .replace("{{share_image}}", cfg["site"].get("url", "").rstrip("/") + "/" + share))
